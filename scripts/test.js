@@ -3,23 +3,40 @@ const path = require('path');
 const dotenvPath = path.resolve(__dirname, '..', '.env');
 require('dotenv').config({ path: dotenvPath });
 
-
 const ALCHEMY_API_URL = process.env.ALCHEMY_API_URL;
-const walletPrivateKey = process.env.WALLET_PRIVATE_KEY
+const walletPrivateKey = process.env.WALLET_PRIVATE_KEY;
 const contractAddress = process.env.CONTRACT_ADDRESS;
 const walletAddress = process.env.WALLET_ADDRESS;
 
 const web3 = new Web3(ALCHEMY_API_URL);
-const contract = require('../artifacts/contracts/greet.sol/greet.json');
-const contracts = new web3.eth.Contract(contract.abi, contractAddress);
+const contract = require('../artifacts/contracts/betting_e_sport.sol/BettingESport.json'); // Mettez à jour le chemin du fichier JSON du contrat
+const parisEsportContract = new web3.eth.Contract(contract.abi, contractAddress);
 
-const incrementGreetings = async () => {
+async function placeBet() {
     const gasPrice = await web3.eth.getGasPrice();
-    const gasEstimate = await contracts.methods.greetings().estimateGas();
+    const gasEstimate = await parisEsportContract.methods.placeBet().estimateGas();
 
     const transactionParameters = {
         to: contractAddress,
-        data: contracts.methods.greetings().encodeABI(),
+        data: parisEsportContract.methods.placeBet().encodeABI(),
+        gas: gasEstimate,
+        gasPrice: gasPrice,
+        from: walletAddress,
+        value: web3.utils.toWei("1", "ether")
+    };
+
+    const signedTransaction = await web3.eth.accounts.signTransaction(transactionParameters, walletPrivateKey);
+    const transaction = await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction);
+    console.log('Bet placed. Transaction Hash:', transaction.transactionHash);
+}
+
+async function closeBetting() {
+    const gasPrice = await web3.eth.getGasPrice();
+    const gasEstimate = await parisEsportContract.methods.closeBetting().estimateGas();
+
+    const transactionParameters = {
+        to: contractAddress,
+        data: parisEsportContract.methods.closeBetting().encodeABI(),
         gas: gasEstimate,
         gasPrice: gasPrice,
         from: walletAddress,
@@ -27,12 +44,27 @@ const incrementGreetings = async () => {
 
     const signedTransaction = await web3.eth.accounts.signTransaction(transactionParameters, walletPrivateKey);
     const transaction = await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction);
-    console.log('Transaction Hash:', transaction.transactionHash);
+    console.log('Betting closed. Transaction Hash:', transaction.transactionHash);
 }
-getContractMessage = async () => {
-    const message = await contracts.methods.getAmountOfGreetings().call();
-    console.log(message);
+
+async function distributePrizes() {
+    const gasPrice = await web3.eth.getGasPrice();
+    const gasEstimate = await parisEsportContract.methods.distributePrizes().estimateGas();
+
+    const transactionParameters = {
+        to: contractAddress,
+        data: parisEsportContract.methods.distributePrizes().encodeABI(),
+        gas: gasEstimate,
+        gasPrice: gasPrice,
+        from: walletAddress,
+    };
+
+    const signedTransaction = await web3.eth.accounts.signTransaction(transactionParameters, walletPrivateKey);
+    const transaction = await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction);
+    console.log('Prizes distributed. Transaction Hash:', transaction.transactionHash);
 }
-incrementGreetings().then(() => {
-    getContractMessage().then(r => console.log("finished"));
-});
+
+placeBet()
+    .then(() => closeBetting())
+    .then(() => distributePrizes())
+    .catch(error => console.error(error));
