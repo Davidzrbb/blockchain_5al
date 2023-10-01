@@ -1,27 +1,36 @@
 // SPDX-License-Identifier: UNLICENSED
 
 pragma solidity ^0.8.9;
+
 import "hardhat/console.sol";
 
 pragma solidity ^0.8.0;
 
 contract BettingESport {
     address public owner;
-    mapping(address => uint256) public balances; // Les soldes des utilisateurs
-    mapping(address => uint256) public bets; // Les paris des utilisateurs
-    address[] public players; // Liste des joueurs
-    bool public bettingOpen = true; // La période de paris est ouverte
+    mapping(uint256 => Betting) public betting;
+    uint256 public betCounter;
 
-    event BetPlaced(address indexed player, uint256 amount);
+    struct Betting {
+        uint256 id;
+        string name;
+        bool isFinished;
+        Team firstTeam;
+        Team secondTeam;
+    }
+
+    struct Team {
+        uint256 id;
+        string name;
+        uint256 score;
+    }
+
+
+    event BetPlaced(address indexed player, uint256 amount, Betting betting);
     event BetWinner(address indexed player, uint256 amount);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Seul le proprietaire peut effectuer cette operation");
-    _;
-    }
-
-    modifier onlyBettingOpen() {
-        require(bettingOpen, "La periode de paris est terminee");
         _;
     }
 
@@ -29,37 +38,37 @@ contract BettingESport {
         owner = msg.sender;
     }
 
-    function placeBet() external payable onlyBettingOpen {
-        require(msg.value > 0, "Le montant du pari doit etre superieur a zero");
-        balances[msg.sender] += msg.value;
-        bets[msg.sender] += msg.value;
-        players.push(msg.sender);
-        emit BetPlaced(msg.sender, msg.value);
-    }
+    function createBetting(Betting memory newBetting) external onlyOwner {
+        // Ensure teams have unique IDs
+        require(newBetting.firstTeam.id != newBetting.secondTeam.id, "Team IDs must be unique");
 
-    function closeBetting() external onlyOwner {
-        bettingOpen = false;
-    }
+        // Ensure the bet name is not empty
+        require(bytes(newBetting.name).length > 0, "Bet name cannot be empty");
 
-    function distributePrizes(address payable winner) external onlyOwner {
-        require(!bettingOpen, "La periode de paris n'est pas encore terminee");
-        require(bets[winner] > 0, "Le gagnant n'a pas fait de pari");
-        uint256 totalBets = 0;
-        for (uint256 i = 0; i < players.length; i++) {
-            totalBets += bets[players[i]];
+        // Increment bet counter
+        betCounter++;
+
+        // Create new betting instance
+        Betting memory bettingInstance = Betting({
+            id: betCounter,
+            name: newBetting.name,
+            isFinished: false,
+            firstTeam: Team({id: newBetting.firstTeam.id, name: newBetting.firstTeam.name, score: 0}),
+            secondTeam: Team({id: newBetting.secondTeam.id, name: newBetting.secondTeam.name, score: 0})
+        });
+
+        betting[betCounter] = bettingInstance;
+
+        emit BetPlaced(msg.sender, betCounter, bettingInstance);
+    }
+    //get all betting
+    function getAllBetting() external view returns (Betting[] memory) {
+        Betting[] memory bettings = new Betting[](betCounter);
+        for (uint256 i = 0; i < betCounter; i++) {
+            bettings[i] = betting[i + 1];
         }
-        uint256 prize = address(this).balance;
-        uint256 winnerShare = (bets[winner] * prize) / totalBets;
-        winner.transfer(winnerShare);
-        emit BetWinner(winner, winnerShare);
+        return bettings;
     }
 
-
-    function withdrawFunds() external {
-        uint256 amount = balances[msg.sender];
-        require(amount > 0, "Aucun fonds disponibles");
-        balances[msg.sender] = 0;
-        payable(msg.sender).transfer(amount);
-    }
 }
 
