@@ -42,6 +42,21 @@ describe("BettingESport Contract", function () {
         };
         await bettingESport.createBet(bet);
         const newBettingInstance = await bettingESport.betting(1);
+        const newBet = await bettingESport.bets(bettingInstance.id, 0);
+
         assert.equal(newBettingInstance.firstTeam.value, bet.amount, "Bet amount should match");
+        assert.equal(newBet.player, bet.player, "Bet player should match");
+
+    });
+
+    it("Should place a bet and close the bet with the correct winner", async () => {
+        const bettingInstance = await bettingESport.betting(1);
+        await bettingESport.closeBet(bettingInstance.id, bettingInstance.firstTeam.id);
+        const newBettingInstance = await bettingESport.betting(1);
+        const winners = await bettingESport.winners(bettingInstance.id,0);
+        const newBet = await bettingESport.bets(bettingInstance.id, 0);
+        assert.equal(newBettingInstance.isFinished, true, "Bet should be closed");
+        assert.equal(winners.bettingId.toNumber(), newBettingInstance.id.toNumber(), "Bet winner should match");
+        assert.equal(newBet.player, winners.player, "Bet winner should match");
     });
 });
