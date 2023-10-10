@@ -2,10 +2,6 @@
 
 pragma solidity ^0.8.9;
 
-import "hardhat/console.sol";
-
-pragma solidity ^0.8.0;
-
 contract BettingESport {
     address public owner;
     mapping(uint256 => Betting) public betting;
@@ -13,6 +9,7 @@ contract BettingESport {
     mapping(uint256 => Winner[]) public winners;
     uint256 public bettingCounter;
     mapping(uint256 => uint256) public betCounterByBettingId;
+    
 
     struct Betting {
         uint256 id;
@@ -41,6 +38,8 @@ contract BettingESport {
         uint256 teamId;
         address payable player;
     }
+
+   
 
     event BetPlaced(address indexed player, uint256 amount, Betting betting);
     event BetWinner(address indexed player, uint256 amount);
