@@ -7,7 +7,7 @@ pragma solidity ^0.8.9;
 import "./ownable.sol";
 import "./safemath.sol";
 
-contract CardFactory is Ownable {
+contract CardFactory is ERC721, Ownable {
 
     using SafeMath for uint256;
     using SafeMath32 for uint32;
@@ -31,6 +31,18 @@ contract CardFactory is Ownable {
     }
 
     Card[] public cards;
+
+    uint256 private _nextTokenId;
+
+    constructor(address initialOwner)
+        ERC721("Card", "CRD")
+        Ownable(initialOwner)
+    {}
+
+    function safeMint(address to) public onlyOwner {
+        uint256 tokenId = _nextTokenId++;
+        _safeMint(to, tokenId);
+    }
 
     function _createCard(string memory _name, string memory _rarity, mapping(string => uint) _stats) internal {
         uint id = cards.push(Card(_name, _rarity, _stats)) - 1;
