@@ -5,6 +5,7 @@ pragma solidity ^0.8.9;
 
 
 import "./ownable.sol";
+import "./safemath.sol";
 
 contract CardFactory is Ownable {
 
