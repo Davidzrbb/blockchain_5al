@@ -1,83 +1,99 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.20;
 
 
 
-import "./ownable.sol";
 import "./safemath.sol";
 
-contract CardFactory is ERC721, Ownable {
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
+
+contract CardFactory is ERC1155, ERC1155Supply, Ownable {
 
     using SafeMath for uint256;
     using SafeMath32 for uint32;
     using SafeMath16 for uint16;
 
-    mapping(uint => address) public cardToOwner;
-    mapping(address => uint) ownerCardCount;
+    uint256 public cardIdMax = 9;
+    uint256 public nonce = 0;
 
-    mapping(string => uint) public cardNameToId;
-    mapping(uint => string) public idTocardName;
+    event CardIdMaxChanged(uint256 newCardIdMax);
 
-    mapping(string => mapping(string => uint)) public cardNameToStats;
-    
+    mapping (uint => mapping(address => uint)) public cardIdToOwnerToAmount;
+    mapping (uint => address[]) public cardIdToOwners;
 
-    event NewCard(uint cardId, string name, string rarity, mapping(string => uint) stats);
-    
-    struct Card {
-        string name;
-        mapping(string => uint) stats;
-        string rarity;
-    }
-
-    Card[] public cards;
-
-    uint256 private _nextTokenId;
-
-    constructor(address initialOwner)
-        ERC721("Card", "CRD")
-        Ownable(initialOwner)
+    constructor()
+        ERC1155("http://51.38.190.134:1155/cards/{id}.json")
+        Ownable(msg.sender)
     {}
 
-    function safeMint(address to) public onlyOwner {
-        uint256 tokenId = _nextTokenId++;
-        _safeMint(to, tokenId);
+    // The following functions are overrides required by Solidity.
+    function _update(address _from, address _to, uint256[] memory _ids, uint256[] memory _values)
+        internal
+        override(ERC1155, ERC1155Supply)
+    {
+        super._update(_from, _to, _ids, _values);
     }
 
-    function _createCard(string memory _name, string memory _rarity, mapping(string => uint) _stats) internal {
-        uint id = cards.push(Card(_name, _rarity, _stats)) - 1;
-        cardToOwner[id] = msg.sender;
-        ownerCardCount[msg.sender] = ownerCardCount[msg.sender].add(1);
-        emit NewCard(id, _name, _rarity, _stats);
-    }
+    function _createCard(uint _id) internal {
+        _mint(msg.sender, _id, 1, "");
 
-    function openPack() external {
-        require(msg.value == 0.01 ether, "You need to pay 0.01 ether to open a pack");
+        cardIdToOwnerToAmount[_id][msg.sender] = cardIdToOwnerToAmount[_id][msg.sender].add(1);   
+
+        for(uint i = 0; i < cardIdToOwners[_id].length; i++) {
+            if(cardIdToOwners[_id][i] == msg.sender) {
+                return;
+            }
+        }
+
+        cardIdToOwners[_id].push(msg.sender);    
         
-        uint rand = _generateRandomNumber();
-        string memory rarity = _getRarity(rand);
-        string name = idTocardName[rand % idTocardName.length];
-        mapping(string => uint) stats = cardNameToStats[name];
-
-        _createCard(name, rarity, stats);
-
     }
 
-    function _generateRandomNumber() internal view returns (uint) {
-        uint rand = uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, block.difficulty)));
+    
+
+    function _generateRandomNumberRarity() internal view returns (uint) {
+        uint rand = uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, block.prevrandao)));
         return rand;
     }
 
-    function _getRarity(uint _rand) internal pure returns (string memory) {
-        if( _rand % 100 <= 1) {
-            return "legendary";
-        } else if (_rand % 100 <= 21) {
-            return "rare";
+    function _generateRandomNumberCardId() internal returns (uint) {
+        nonce++;
+        uint rand = uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce)));
+        return rand;
+    }
+
+    function _getRarity(uint _rand) internal pure returns (uint) {
+        if( _rand % 100 < 20) {
+            return 2;
+        } else if (_rand % 100 < 50) {
+            return 1;
         } else {
-            return "common";
+            return 0;
         }
     }
 
+    function _getCardId(uint _rand) internal view returns (uint) {
+        return (((_rand % (cardIdMax/3)) + 1) * 3) - 2; 
+        // each card have 3 rarity so id 1,2 and 3 is for the "first" card, then 4,5 and 6 for the second, so if we want the second, we do 2*3 then -2 to remove 2 rairty and get common rarity)
+    }
 
+    /*
+
+        ((5134 % (9/3)) + 1)
+        ((5134 % 3) + 1)
+        (1 + 1)
+        2
+
+        2*3
+        6
+        6 - 2
+        4
+
+
+
+    */
     
 }

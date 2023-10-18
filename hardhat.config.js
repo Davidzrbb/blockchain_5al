@@ -6,7 +6,15 @@ const ALCHEMY_API_URL = process.env.ALCHEMY_API_URL;
 const walletPrivateKey = process.env.WALLET_PRIVATE_KEY;
 
 module.exports = {
-    solidity: "0.8.9",
+    solidity: {
+        version: "0.8.20",
+        settings: {
+            optimizer: {
+                enabled: true,
+                runs: 1000,
+            },
+        },
+    },
     networks: {
         hardhat: {},
         sepolia: {

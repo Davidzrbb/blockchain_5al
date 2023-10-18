@@ -1,8 +1,8 @@
 async function main() {
-    const bettingContractFactory = await ethers.getContractFactory("BettingESport")
-    const bettingContract = await bettingContractFactory.deploy()
-    await bettingContract.deployed()
-    console.log("Contract deployed to:", bettingContract.address)
+    const battleHelperContractFactory = await ethers.getContractFactory("BattleHelper")
+    const battleHelperContract = await battleHelperContractFactory.deploy()
+    await battleHelperContract.deployed()
+    console.log("Contract deployed to:", battleHelperContract.address)
 }
 
 main().catch((e) => console.log(e))
